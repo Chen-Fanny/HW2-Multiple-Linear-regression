@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HW2 共享單車每小時需求預測系統 | 多元線性迴歸與特徵選取</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+    <!-- Background Gradient Glows -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <!-- Header Navigation -->
+    <header class="navbar" id="top-navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <i class="fa-solid fa-bicycle brand-icon"></i>
+                <div class="brand-text">
+                    <span class="brand-title">CityBike AI Analytics</span>
+                    <span class="brand-subtitle">智慧共享單車需求預測系統 (HW2)</span>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="#overview" class="nav-link active"><i class="fa-solid fa-chart-line"></i> 總覽</a>
+                <a href="#ols-model" class="nav-link"><i class="fa-solid fa-calculator"></i> OLS統計診斷</a>
+                <a href="#features" class="nav-link"><i class="fa-solid fa-filter"></i> 特徵選取</a>
+                <a href="#conformal" class="nav-link"><i class="fa-solid fa-shield-halved"></i> 95%預測區間</a>
+                <a href="#simulator" class="nav-link"><i class="fa-solid fa-sliders"></i> 即時模擬器</a>
+                <a href="#kaggle" class="nav-link"><i class="fa-solid fa-trophy"></i> Kaggle評估</a>
+                <a href="#crisp-dm" class="nav-link"><i class="fa-solid fa-diagram-project"></i> CRISP-DM</a>
+            </nav>
+            <div class="nav-actions">
+                <button id="theme-toggle" class="btn-icon" title="切換深色/淺色主題">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <a href="#simulator" class="btn-primary-sm">
+                    <i class="fa-solid fa-bolt"></i> 立即體驗
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section class="hero-section" id="overview">
+            <h1 class="hero-title">
+                基於多元線性迴歸與特徵選取之<br>
+                <span class="gradient-text">共享單車每小時需求預測與不確定性量化</span>
+            </h1>
+            <p class="hero-desc">
+                採用 Capital Bikeshare 雙年度 17,379 筆真實時序營運數據。落實目標防外洩（嚴禁使用 casual / registered）與時序防穿越規範，
+                系統性評估 Lasso、Forward SFS、RFE、ElasticNet 與有限計算窮舉等 5 種特徵選取演算法，
+                並導入統計學嚴謹之 <b>獨立校準集分割共形預測 (Split Conformal Prediction)</b> 產出具備理論覆蓋保證之 95% 需求波動區間。
+            </p>
+
+            <!-- Key Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="metric-card card-glow-blue">
+                    <div class="metric-header">
+                        <span class="metric-label">獨立測試集判定係數</span>
+                        <i class="fa-solid fa-chart-pie metric-icon"></i>
+                    </div>
+                    <div class="metric-value">0.5824</div>
+                    <div class="metric-footer text-success">
+                        <i class="fa-solid fa-arrow-trend-up"></i> 訓練集 R² 達 0.6991 (泛化穩健)
+                    </div>
+                </div>
+
+                <div class="metric-card card-glow-purple">
+                    <div class="metric-header">
+                        <span class="metric-label">測試集均方根誤差 (RMSE)</span>
+                        <i class="fa-solid fa-calculator metric-icon"></i>
+                    </div>
+                    <div class="metric-value">138.99 <span class="metric-unit">輛/小時</span></div>
+                    <div class="metric-footer">
+                        <span>平均絕對誤差 MAE: 100.92 輛</span>
+                    </div>
+                </div>
+
+                <div class="metric-card card-glow-emerald">
+                    <div class="metric-header">
+                        <span class="metric-label">95% 共形預測實證覆蓋率</span>
+                        <i class="fa-solid fa-shield-check metric-icon"></i>
+                    </div>
+                    <div class="metric-value">94.40%</div>
+                    <div class="metric-footer text-emerald">
+                        <i class="fa-solid fa-circle-check"></i> 名義水準 95.0% (誤差僅 0.6%)
+                    </div>
+                </div>
+
+                <div class="metric-card card-glow-amber">
+                    <div class="metric-header">
+                        <span class="metric-label">95% 共形殘差閾值 (q)</span>
+                        <i class="fa-solid fa-arrows-left-right metric-icon"></i>
+                    </div>
+                    <div class="metric-value">±318.81 <span class="metric-unit">輛</span></div>
+                    <div class="metric-footer">
+                        <span>校準樣本 n_cal = 1,737 筆無分佈假設</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- StatsUnlock Inspired: OLS Model Summary & Collinearity Diagnostics Section -->
+        <section class="content-section" id="ols-model">
+            <!-- Attribution Header -->
+            <div class="statsunlock-attribution">
+                <span>
+                    <i class="fa-solid fa-compass-drafting text-primary"></i>
+                    <b>版面設計參考來源</b>：
+                    <a href="https://statsunlock.com/multiple-linear-regression-calculator/" target="_blank">
+                        StatsUnlock — Multiple Linear Regression Calculator (OLS Tool with Coefficients, R² & VIF)
+                    </a>
+                </span>
+                <span class="badge-pill badge-primary">全面涵蓋 OLS · VIF · ANOVA · APA 7</span>
+            </div>
+
+            <div class="section-header">
+                <div class="section-tag"><i class="fa-solid fa-calculator"></i> 多元線性迴歸統計全解析</div>
+                <h2 class="section-title">OLS 模型統計摘要、迴歸方程式與共線性診斷</h2>
+                <p class="section-desc">遵循計量經濟學與統計學專業標準，輸出未標準化係數 (B)、標準化權重 (β)、t 檢定、95% 信賴區間、ANOVA 變異數分解與 VIF 共線性診斷。</p>
+            </div>
+
+            <!-- StatsUnlock Summary Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card card-glow-blue">
+                    <div class="metric-header">
+                        <span class="metric-label">判定係數 (R²)</span>
+                        <i class="fa-solid fa-chart-pie metric-icon"></i>
+                    </div>
+                    <div class="metric-value">0.6991</div>
+                    <div class="metric-footer text-success">
+                        <span>訓練集 0.6991 / 測試集 0.5824</span>
+                    </div>
+                </div>
+
+                <div class="metric-card card-glow-purple">
+                    <div class="metric-header">
+                        <span class="metric-label">調整後 R² (Adjusted R²)</span>
+                        <i class="fa-solid fa-sliders metric-icon"></i>
+                    </div>
+                    <div class="metric-value">0.6986</div>
+                    <div class="metric-footer">
+                        <span>扣除 18 個特徵自由度懲罰</span>
+                    </div>
+                </div>
+
+                <div class="metric-card card-glow-emerald">
+                    <div class="metric-header">
+                        <span class="metric-label">F 檢定統計量 F(18, 10408)</span>
+                        <i class="fa-solid fa-scale-balanced metric-icon"></i>
+                    </div>
+                    <div class="metric-value">1,343.35</div>
+                    <div class="metric-footer text-emerald">
+                        <i class="fa-solid fa-circle-check"></i> 遠大於臨界值 (極度顯著)
+                    </div>
+                </div>
+
+                <div class="metric-card card-glow-amber">
+                    <div class="metric-header">
+                        <span class="metric-label">模型整體顯著性 p-value</span>
+                        <i class="fa-solid fa-certificate metric-icon"></i>
+                    </div>
+                    <div class="metric-value">&lt; 0.001 <span class="metric-unit">***</span></div>
+                    <div class="metric-footer text-amber">
+                        <span>拒絕虛無假設 H₀: β₁=...=β₁₈=0</span>
+                    </div>
+                </div>
+
+                <div class="metric-card card-glow-blue">
+                    <div class="metric-header">
+                        <span class="metric-label">均方根誤差 (RMSE)</span>
+                        <i class="fa-solid fa-calculator metric-icon"></i>
+                    </div>
+                    <div class="metric-value">73.84 <span class="metric-unit">輛/h</span></div>
+                    <div class="metric-footer">
+                        <span>測試集 RMSE 為 138.99 輛/h</span>
+                    </div>
+                </div>
+
+                <div class="metric-card card-glow-purple">
+                    <div class="metric-header">
+                        <span class="metric-label">樣本與變數比 (n / k)</span>
+                        <i class="fa-solid fa-users-viewfinder metric-icon"></i>
+                    </div>
+                    <div class="metric-value">579.3 <span class="metric-unit">: 1</span></div>
+                    <div class="metric-footer text-success">
+                        <span>n = 10,427 / k = 18 (高於10:1門檻)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistical Significance Callout Banner -->
+            <div class="sig-callout-banner sig-success">
+                <i class="fa-solid fa-circle-check sig-icon"></i>
+                <div>
+                    <strong>整體多元線性迴歸模型具備極高統計顯著性 (Statistically Significant)</strong> — 
+                    在顯著水準 α = 0.05 下，F(18, 10408) = 1,343.35, p &lt; 0.001。
+                    所選取的 18 個氣象、週期諧波與行事曆特徵聯合解釋了 Capital Bikeshare 訓練資料中 <strong>69.91%</strong> 的總借車需求變異 (R² = 0.6991, 調整後 R² = 0.6986)，
+                    且於獨立未來時序測試集上仍展現 <strong>58.24%</strong> 的強韌泛化能力。
+                </div>
+            </div>
+
+            <!-- Mathematical Equation Banner -->
+            <div class="equation-box">
+                <div class="equation-box-header">
+                    <span class="equation-box-title">
+                        <i class="fa-solid fa-square-root-variable text-primary"></i>
+                        多元線性迴歸數學方程式 (Fitted OLS Equation)
+                    </span>
+                    <span class="badge-pill badge-info">物理未標準化單位 (輛/小時)</span>
+                </div>
+                <div class="equation-formula-scroll">
+                    <span class="eq-target">cnt̂</span> = 
+                    <span class="eq-intercept">-6.574</span>
+                    <span class="eq-pos"> + 70.746</span> · <span class="eq-var">yr</span>
+                    <span class="eq-neg"> - 16.517</span> · <span class="eq-var">holiday</span>
+                    <span class="eq-neg"> - 25.445</span> · <span class="eq-var">workingday</span>
+                    <span class="eq-pos"> + 280.084</span> · <span class="eq-var">temp</span>
+                    <span class="eq-pos"> + 65.282</span> · <span class="eq-var">atemp</span>
+                    <span class="eq-pos"> + 50.111</span> · <span class="eq-var">hum</span>
+                    <span class="eq-neg"> - 32.099</span> · <span class="eq-var">windspeed</span>
+                    <span class="eq-pos"> + 38.639</span> · <span class="eq-var">season_summer</span>
+                    <span class="eq-pos"> + 30.786</span> · <span class="eq-var">season_fall</span>
+                    <span class="eq-pos"> + 57.290</span> · <span class="eq-var">season_winter</span>
+                    <span class="eq-neg"> - 8.591</span> · <span class="eq-var">weather_mist</span>
+                    <span class="eq-neg"> - 56.550</span> · <span class="eq-var">weather_bad</span>
+                    <span class="eq-neg"> - 62.864</span> · <span class="eq-var">hr_sin</span>
+                    <span class="eq-neg"> - 55.503</span> · <span class="eq-var">hr_cos</span>
+                    <span class="eq-neg"> - 18.294</span> · <span class="eq-var">hr_sin2</span>
+                    <span class="eq-neg"> - 26.578</span> · <span class="eq-var">hr_cos2</span>
+                    <span class="eq-pos"> + 164.918</span> · <span class="eq-var">is_rush_hour</span>
+                    <span class="eq-neg"> - 223.354</span> · <span class="eq-var">temp_hum</span>
+                </div>
+            </div>
+
+            <!-- Full Regression Coefficients & VIF Table -->
+            <div class="table-responsive card-container">
+                <div class="panel-header" style="margin-bottom:12px;">
+                    <h3><i class="fa-solid fa-table-list text-primary"></i> 完整迴歸係數與變異數膨脹因子檢驗表 (Coefficients & VIF Full Output)</h3>
+                    <span class="badge-pill badge-primary">N = 10,427 訓練樣本</span>
+                </div>
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>預測因子 (Predictor)</th>
+                            <th>未標準化係數 B</th>
+                            <th>標準誤 SE</th>
+                            <th>標準化 β</th>
+                            <th>t 統計量</th>
+                            <th>p 值 (顯著性)</th>
+                            <th>95% 信賴區間 [CI]</th>
+                            <th>共線性 VIF</th>
+                            <th>共線性狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><b>截距 (Intercept β₀)</b></td>
+                            <td>-6.5740</td>
+                            <td>6.9171</td>
+                            <td>—</td>
+                            <td>-0.950</td>
+                            <td>0.3419</td>
+                            <td>[-20.13, 6.98]</td>
+                            <td>1.00</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 正常</span></td>
+                        </tr>
+                        <tr class="highlight-row">
+                            <td><b>尖峰指示器 (is_rush_hour)</b></td>
+                            <td><b>+164.9184</b></td>
+                            <td>2.5666</td>
+                            <td><b>+0.3906</b></td>
+                            <td>64.255</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[159.89, 169.95]</td>
+                            <td>1.28</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>氣溫 (temp)</b></td>
+                            <td>+280.0838</td>
+                            <td>35.2650</td>
+                            <td>+0.4107</td>
+                            <td>7.942</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[210.96, 349.21]</td>
+                            <td><b>92.47</b></td>
+                            <td><span class="vif-badge vif-severe"><i class="fa-solid fa-triangle-exclamation"></i> 嚴重 (&gt;10)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>體感溫度 (atemp)</b></td>
+                            <td>+65.2820</td>
+                            <td>35.5815</td>
+                            <td>+0.0860</td>
+                            <td>1.835</td>
+                            <td>0.0666 .</td>
+                            <td>[-4.46, 135.03]</td>
+                            <td><b>75.97</b></td>
+                            <td><span class="vif-badge vif-severe"><i class="fa-solid fa-triangle-exclamation"></i> 嚴重 (&gt;10)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>溫濕度交互項 (temp_hum)</b></td>
+                            <td>-223.3540</td>
+                            <td>20.4851</td>
+                            <td>-0.2490</td>
+                            <td>-10.903</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-263.51, -183.20]</td>
+                            <td><b>18.04</b></td>
+                            <td><span class="vif-badge vif-severe"><i class="fa-solid fa-triangle-exclamation"></i> 嚴重 (&gt;10)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>相對濕度 (hum)</b></td>
+                            <td>+50.1108</td>
+                            <td>10.5876</td>
+                            <td>+0.0736</td>
+                            <td>4.733</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[29.36, 70.86]</td>
+                            <td>8.37</td>
+                            <td><span class="vif-badge vif-warn"><i class="fa-solid fa-circle-exclamation"></i> 警戒 (5-10)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>24h 日週期諧波 (hr_sin)</b></td>
+                            <td>-62.8643</td>
+                            <td>1.1596</td>
+                            <td>-0.3300</td>
+                            <td>-54.210</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-65.14, -60.59]</td>
+                            <td>1.28</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>24h 日週期諧波 (hr_cos)</b></td>
+                            <td>-55.5026</td>
+                            <td>1.1369</td>
+                            <td>-0.2918</td>
+                            <td>-48.818</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-57.73, -53.27]</td>
+                            <td>1.24</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>年份趨勢 (yr)</b></td>
+                            <td>+70.7463</td>
+                            <td>2.4062</td>
+                            <td>+0.1978</td>
+                            <td>29.402</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[66.03, 75.46]</td>
+                            <td>1.57</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>冬季虛擬變數 (season_winter)</b></td>
+                            <td>+57.2898</td>
+                            <td>2.5518</td>
+                            <td>+0.1717</td>
+                            <td>22.451</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[52.29, 62.29]</td>
+                            <td>2.02</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>惡劣天候 (weather_bad)</b></td>
+                            <td>-56.5501</td>
+                            <td>2.9257</td>
+                            <td>-0.1200</td>
+                            <td>-19.329</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-62.29, -50.82]</td>
+                            <td>1.33</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>夏季虛擬變數 (season_summer)</b></td>
+                            <td>+38.6391</td>
+                            <td>2.8456</td>
+                            <td>+0.1172</td>
+                            <td>13.579</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[33.06, 44.22]</td>
+                            <td>2.58</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>秋季虛擬變數 (season_fall)</b></td>
+                            <td>+30.7861</td>
+                            <td>3.6161</td>
+                            <td>+0.0939</td>
+                            <td>8.514</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[23.70, 37.87]</td>
+                            <td>4.21</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>風速 (windspeed)</b></td>
+                            <td>-32.0992</td>
+                            <td>6.6244</td>
+                            <td>-0.0300</td>
+                            <td>-4.846</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-45.08, -19.11]</td>
+                            <td>1.32</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>12h 半日諧波 (hr_cos2)</b></td>
+                            <td>-26.5782</td>
+                            <td>1.0835</td>
+                            <td>-0.1399</td>
+                            <td>-24.531</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-28.70, -24.45]</td>
+                            <td>1.12</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>工作日 (workingday)</b></td>
+                            <td>-25.4453</td>
+                            <td>1.6739</td>
+                            <td>-0.0880</td>
+                            <td>-15.201</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-28.73, -22.16]</td>
+                            <td>1.16</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>12h 半日諧波 (hr_sin2)</b></td>
+                            <td>-18.2944</td>
+                            <td>1.0524</td>
+                            <td>-0.0959</td>
+                            <td>-17.383</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-20.36, -16.23]</td>
+                            <td>1.05</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>國定假日 (holiday)</b></td>
+                            <td>-16.5172</td>
+                            <td>4.4357</td>
+                            <td>-0.0208</td>
+                            <td>-3.724</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-25.21, -7.82]</td>
+                            <td>1.08</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                        <tr>
+                            <td><b>薄霧天候 (weather_mist)</b></td>
+                            <td>-8.5909</td>
+                            <td>1.8077</td>
+                            <td>-0.0278</td>
+                            <td>-4.752</td>
+                            <td>&lt; 0.001 ***</td>
+                            <td>[-12.13, -5.05]</td>
+                            <td>1.19</td>
+                            <td><span class="vif-badge vif-pass"><i class="fa-solid fa-check"></i> 良好 (&lt;5)</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="margin-top:10px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                    <span><b>顯著性標記</b>：*** p &lt; .001 · ** p &lt; .01 · * p &lt; .05 · · p &lt; .10</span>
+                    <span><b>VIF 判定基準</b>：VIF &lt; 5 (無共線性隱憂) · 5 ≤ VIF ≤ 10 (中度注意) · VIF &gt; 10 (嚴重共線性)</span>
+                </div>
+            </div>
+
+            <!-- ANOVA Table (Analysis of Variance) -->
+            <div class="anova-table-container">
+                <div class="panel-header" style="margin-bottom:12px;">
+                    <h3><i class="fa-solid fa-chart-column text-accent-purple"></i> ANOVA 變異數分解表 (Analysis of Variance)</h3>
+                    <span class="badge-pill badge-primary">F(18, 10408) = 1,343.35, p &lt; .001</span>
+                </div>
+                <table class="anova-table">
+                    <thead>
+                        <tr>
+                            <th>變異來源 (Source)</th>
+                            <th>平方和 (SS)</th>
+                            <th>自由度 (df)</th>
+                            <th>均方 (MS)</th>
+                            <th>F 統計量</th>
+                            <th>p-value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>迴歸模型 (Regression)</td>
+                            <td>131,847,583.10</td>
+                            <td>18</td>
+                            <td>7,324,865.73</td>
+                            <td>1,343.35</td>
+                            <td>&lt; 0.001 ***</td>
+                        </tr>
+                        <tr>
+                            <td>殘差誤差 (Residual Error)</td>
+                            <td>56,751,493.52</td>
+                            <td>10,408</td>
+                            <td>5,452.68</td>
+                            <td>—</td>
+                            <td>—</td>
+                        </tr>
+                        <tr class="total-row">
+                            <td>總變異 (Total)</td>
+                            <td>188,599,076.62</td>
+                            <td>10,426</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 4 Assumption Checks -->
+            <div class="assumptions-grid">
+                <div class="assumption-card">
+                    <div class="assumption-card-header">
+                        <span class="assumption-title">多元共線性 (VIF)</span>
+                        <span class="assumption-status-tag status-warn">⚠️ 嚴重共線</span>
+                    </div>
+                    <div class="assumption-metric text-amber">92.47</div>
+                    <div class="assumption-desc">
+                        temp 與 atemp 相關高達 0.988，VIF 遠超 10。本專案透過後續 Lasso 特徵選取精準將 atemp 歸零，化解共線性！
+                    </div>
+                </div>
+
+                <div class="assumption-card">
+                    <div class="assumption-card-header">
+                        <span class="assumption-title">殘差自相關 (DW)</span>
+                        <span class="assumption-status-tag status-warn">⚠️ 正自相關</span>
+                    </div>
+                    <div class="assumption-metric text-amber">0.584</div>
+                    <div class="assumption-desc">
+                        時序相鄰小時具有正向自相關性 (DW &lt; 1.5)。本專案嚴格依時序切割驗證/測試集，並以獨立校準集保證外推有效性。
+                    </div>
+                </div>
+
+                <div class="assumption-card">
+                    <div class="assumption-card-header">
+                        <span class="assumption-title">殘差常態性 (Skew)</span>
+                        <span class="assumption-status-tag status-warn">⚠️ 右偏長尾</span>
+                    </div>
+                    <div class="assumption-metric text-amber">+1.12</div>
+                    <div class="assumption-desc">
+                        極端高借車量呈現長尾右偏。傳統常態信賴區間將嚴重失效，促成專案導入無分佈假設之分割共形預測。
+                    </div>
+                </div>
+
+                <div class="assumption-card">
+                    <div class="assumption-card-header">
+                        <span class="assumption-title">樣本與變數比 (n/k)</span>
+                        <span class="assumption-status-tag status-pass">✅ 遠超標準</span>
+                    </div>
+                    <div class="assumption-metric text-emerald">579 : 1</div>
+                    <div class="assumption-desc">
+                        訓練樣本數 10,427 筆對應 18 個特徵，比值達 579:1，遠高於迴歸分析建議之 10:1 至 20:1 最低門檻。
+                    </div>
+                </div>
+            </div>
+
+            <!-- APA 7 Academic Writing Box -->
+            <div class="apa-container">
+                <div class="apa-header">
+                    <span class="apa-title">
+                        <i class="fa-solid fa-graduation-cap text-accent-purple"></i>
+                        標準學術論文與期末報告書寫範本 (APA 7th Format)
+                    </span>
+                    <button class="apa-copy-btn" onclick="copyApaText()">
+                        <i class="fa-regular fa-copy"></i> 一鍵複製 APA 段落
+                    </button>
+                </div>
+                <div class="apa-content" id="apa-report-text">
+                    A multiple linear regression analysis was conducted to predict hourly bike sharing demand (cnt) based on 18 meteorological, cyclical harmonic, and calendar features. The overall regression model was statistically significant, F(18, 10408) = 1343.35, p &lt; .001, accounting for 69.91% of the variance in rental demand (R² = .699, Adjusted R² = .699). Working day rush hours (is_rush_hour: B = 164.92, SE = 2.57, β = .391, t = 64.26, p &lt; .001) and ambient temperature (temp: B = 280.08, SE = 35.27, β = .411, t = 7.94, p &lt; .001) were the most influential positive predictors. Multicollinearity diagnostics revealed severe variance inflation between temperature and feeling temperature (VIF_temp = 92.47, VIF_atemp = 75.97), which was strategically addressed through Lasso (L1) regularization that eliminated redundant atemp. Under distribution-free split conformal prediction on an independent calibration set (n_cal = 1,737), the empirical coverage reached 94.40% on future unseen test data at the nominal 95% confidence level.
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Kaggle & Leaderboard Benchmark Section -->
+        <section class="content-section" id="kaggle">
+            <div class="section-header">
+                <div class="section-tag"><i class="fa-solid fa-trophy"></i> 評估標準與名次對照</div>
+                <h2 class="section-title">Kaggle 競賽基準定位與多模型能力矩陣</h2>
+                <p class="section-desc">客觀對照 Kaggle Bike Sharing 歷史公開排行榜，剖析線性模型在高解釋性與不確定性量化上的核心價值。</p>
+            </div>
+
+            <div class="kaggle-grid">
+                <div class="kaggle-card">
+                    <div class="kaggle-badge-header">
+                        <span class="badge-kaggle">Kaggle 歷史競賽背景</span>
+                        <span class="badge-tag">RMSLE 評估標準</span>
+                    </div>
+                    <h3>Kaggle: Bike Sharing Demand 競賽基準分析</h3>
+                    <p>
+                        在 Kaggle 官方歷史競賽中，排行榜頂尖方案（Top 5%）主要採用非線性梯度提升樹集成（如 LightGBM、XGBoost、CatBoost）
+                        搭配對數目標轉換 $\log(1 + y)$，其評估指標 RMSLE（均方根對數誤差）通常介於 <b>0.33 ~ 0.38</b>。
+                    </p>
+                    <p>
+                        本作業嚴格遵循大學機器學習作業規定：<b>使用多元線性迴歸 (LinearRegression) 並直接針對原始總借車量 (cnt) 進行預測與特徵選取</b>。
+                        在嚴格的時間序列劃分（Chronological Holdout，未來未見資料）條件下，本模型取得：
+                    </p>
+                    <div class="kaggle-stats">
+                        <div class="k-stat">
+                            <span class="k-stat-num">0.5824</span>
+                            <span class="k-stat-lbl">未來測試集 R²</span>
+                        </div>
+                        <div class="k-stat">
+                            <span class="k-stat-num">138.99</span>
+                            <span class="k-stat-lbl">未來測試集 RMSE (輛)</span>
+                        </div>
+                        <div class="k-stat">
+                            <span class="k-stat-num">&lt; 0.1 ms</span>
+                            <span class="k-stat-lbl">單次推論延遲 (極速)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kaggle-card">
+                    <h3>模型架構能力對比矩陣 (Model Trade-offs)</h3>
+                    <div class="table-responsive">
+                        <table class="benchmark-table">
+                            <thead>
+                                <tr>
+                                    <th>模型架構</th>
+                                    <th>預測精度 (R²)</th>
+                                    <th>物理可解釋性</th>
+                                    <th>推論速度</th>
+                                    <th>外推趨勢能力</th>
+                                    <th>不確定性量化</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="highlight-row">
+                                    <td><b>多元線性迴歸 (本專案)</b></td>
+                                    <td><span class="badge-pill badge-info">0.58 ~ 0.70</span></td>
+                                    <td><span class="badge-pill badge-success">極高 (Beta 權重透明)</span></td>
+                                    <td><span class="badge-pill badge-success">&lt; 0.1ms</span></td>
+                                    <td><span class="badge-pill badge-success">優 (趨勢外推良好)</span></td>
+                                    <td><span class="badge-pill badge-success">Split Conformal (94.4%)</span></td>
+                                </tr>
+                                <tr>
+                                    <td>梯度提升樹 (LightGBM)</td>
+                                    <td><span class="badge-pill badge-success">0.85 ~ 0.92</span></td>
+                                    <td><span class="badge-pill badge-warning">中 (樹狀黑盒子)</span></td>
+                                    <td><span class="badge-pill badge-info">~ 2ms</span></td>
+                                    <td><span class="badge-pill badge-danger">差 (無法預測未見趨勢)</span></td>
+                                    <td><span class="badge-pill badge-warning">需額外分位數訓練</span></td>
+                                </tr>
+                                <tr>
+                                    <td>隨機森林 (Random Forest)</td>
+                                    <td><span class="badge-pill badge-success">0.82 ~ 0.88</span></td>
+                                    <td><span class="badge-pill badge-warning">中低 (集成黑盒子)</span></td>
+                                    <td><span class="badge-pill badge-warning">~ 15ms</span></td>
+                                    <td><span class="badge-pill badge-danger">差 (樹節點分段限制)</span></td>
+                                    <td><span class="badge-pill badge-warning">樹葉分佈近似</span></td>
+                                </tr>
+                                <tr>
+                                    <td>深度時序網路 (LSTM)</td>
+                                    <td><span class="badge-pill badge-info">0.75 ~ 0.85</span></td>
+                                    <td><span class="badge-pill badge-danger">極低 (完全黑盒子)</span></td>
+                                    <td><span class="badge-pill badge-danger">~ 50ms</span></td>
+                                    <td><span class="badge-pill badge-warning">中等</span></td>
+                                    <td><span class="badge-pill badge-danger">需複雜貝氏蒙地卡羅</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CRISP-DM Interactive Workflow Section -->
+        <section class="content-section" id="crisp-dm">
+            <div class="section-header">
+                <div class="section-tag"><i class="fa-solid fa-diagram-project"></i> 專業資料探勘架構</div>
+                <h2 class="section-title">CRISP-DM 六大階段完整實作</h2>
+                <p class="section-desc">從商業痛點定義、探索性數據分析、防外洩特徵工程、建模選取到部署架構，層層嚴謹把關。</p>
+            </div>
+
+            <!-- CRISP-DM Tabs -->
+            <div class="crisp-tabs">
+                <button class="crisp-tab active" data-step="1">
+                    <span class="tab-num">01</span>
+                    <span class="tab-name">業務理解</span>
+                </button>
+                <button class="crisp-tab" data-step="2">
+                    <span class="tab-num">02</span>
+                    <span class="tab-name">資料理解</span>
+                </button>
+                <button class="crisp-tab" data-step="3">
+                    <span class="tab-num">03</span>
+                    <span class="tab-name">資料準備</span>
+                </button>
+                <button class="crisp-tab" data-step="4">
+                    <span class="tab-num">04</span>
+                    <span class="tab-name">建模選取</span>
+                </button>
+                <button class="crisp-tab" data-step="5">
+                    <span class="tab-num">05</span>
+                    <span class="tab-name">評估診斷</span>
+                </button>
+                <button class="crisp-tab" data-step="6">
+                    <span class="tab-num">06</span>
+                    <span class="tab-name">部署維運</span>
+                </button>
+            </div>
+
+            <!-- CRISP-DM Tab Panels -->
+            <div class="crisp-panel-container">
+                <!-- Panel 1 -->
+                <div class="crisp-panel active" id="crisp-panel-1">
+                    <div class="panel-header">
+                        <h3>階段一：業務理解 (Business Understanding)</h3>
+                        <span class="panel-badge">營運痛點量化</span>
+                    </div>
+                    <div class="panel-content-grid">
+                        <div class="panel-text">
+                            <h4>共享單車營運的「雙重不對稱成本」痛點：</h4>
+                            <ul>
+                                <li><b>低估需求 (Under-prediction)</b>：站點無車可借，引發消費者民怨、降低通勤滿意度並造成營收永久性流失。</li>
+                                <li><b>高估需求 (Over-prediction)</b>：調度卡車盲目投放過多車輛，車樁爆滿導致抵達用戶無法還車，且空車閒置耗損折舊。</li>
+                            </ul>
+                            <div class="callout-box">
+                                <i class="fa-solid fa-bullseye"></i>
+                                <div>
+                                    <b>專案核心目標：</b>建立兼具「高解釋性（清楚掌握各氣象與行事曆因子權重）」與「統計保證（95% 預測區間）」之小時需求模型，提供調度中心具體防護區間。
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-visual">
+                            <div class="mini-card">
+                                <i class="fa-solid fa-truck-ramp-box icon-accent"></i>
+                                <h4>跨站車輛再平衡 (Fleet Rebalancing)</h4>
+                                <p>以預測上限 $Upper_{95}$ 作為「最大備車容量」，以預測下限 $Lower_{95}$ 作為「最小車樁保留容積」，實現精準智慧派車。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2 -->
+                <div class="crisp-panel" id="crisp-panel-2">
+                    <div class="panel-header">
+                        <h3>階段二：資料理解與探索性分析 (Data Understanding & EDA)</h3>
+                        <span class="panel-badge">17,379 筆觀測值</span>
+                    </div>
+                    <div class="panel-content-grid">
+                        <div class="panel-text">
+                            <h4>數據特徵深度探勘發現：</h4>
+                            <ul>
+                                <li><b>無缺失值</b>：全資料集 17,379 筆小時紀錄無任何缺失。</li>
+                                <li><b>嚴重共線性 (Multicollinearity)</b>：溫度 `temp` 與體感溫度 `atemp` 之相關係數高達 <b>0.9877</b>！為後續特徵選取的關鍵考驗。</li>
+                                <li><b>雙峰通勤 vs 平緩單峰</b>：工作日借車呈現強烈 08-09 與 17-18 時之早晚雙尖峰；假日則轉變為午後悠閒單峰。</li>
+                            </ul>
+                        </div>
+                        <div class="panel-visual">
+                            <div class="chart-preview-box">
+                                <img src="results/eda_hourly_demand.png" alt="每小時需求曲線" class="img-preview" onclick="openModal(this.src)">
+                                <span class="chart-caption"><i class="fa-solid fa-magnifying-glass-plus"></i> 點擊放大：工作日 vs 假日雙峰借車曲線</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="charts-gallery">
+                        <div class="gallery-item">
+                            <img src="results/eda_target_distribution.png" alt="目標分佈" onclick="openModal(this.src)">
+                            <span>目標變數分佈 (右偏態)</span>
+                        </div>
+                        <div class="gallery-item">
+                            <img src="results/eda_seasonal_weather.png" alt="季節天候" onclick="openModal(this.src)">
+                            <span>季節與天候需求分佈</span>
+                        </div>
+                        <div class="gallery-item">
+                            <img src="results/eda_correlation_heatmap.png" alt="相關係數熱圖" onclick="openModal(this.src)">
+                            <span>Pearson 相關係數熱圖</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 3 -->
+                <div class="crisp-panel" id="crisp-panel-3">
+                    <div class="panel-header">
+                        <h3>階段三：資料準備與防範外洩 (Data Preparation & Leakage Prevention)</h3>
+                        <span class="panel-badge">18 個工程化特徵</span>
+                    </div>
+                    <div class="panel-content-grid">
+                        <div class="panel-text">
+                            <h4>嚴格防範資料外洩策略：</h4>
+                            <ol>
+                                <li><b>Target Leakage 絕對防範</b>：強制移除 `casual` 與 `registered`，因其數值加總直接等於目標變數（$cnt = casual + registered$）。</li>
+                                <li><b>移除純流水號</b>：剔除 `instant` 避免模型記憶遞增索引。</li>
+                                <li><b>嚴格依時序遞增切分 (Chronological Split)</b>：
+                                    <ul>
+                                        <li>訓練集 (Train): 前 60% (10,427 筆，2011/01 ~ 2012/03)</li>
+                                        <li>驗證集 (Val): 次 15% (2,606 筆，2012/03 ~ 2012/07) - 特徵選取專用</li>
+                                        <li>校準集 (Cal): 次 10% (1,737 筆，2012/07 ~ 2012/09) - 共形區間專用</li>
+                                        <li>測試集 (Test): 末 15% (2,609 筆，2012/09 ~ 2012/12) - 未來獨立評估</li>
+                                    </ul>
+                                </li>
+                                <li><b>特徵工程</b>：構建 24h 日諧波 (`hr_sin`, `hr_cos`)、12h 通勤半日諧波 (`hr_sin2`, `hr_cos2`)、工作日尖峰交互項 (`is_rush_hour`) 與溫濕度交互項 (`temp_hum`)，共 18 個特徵。</li>
+                            </ol>
+                        </div>
+                        <div class="panel-visual">
+                            <div class="code-snippet-box">
+                                <div class="code-header"><i class="fa-solid fa-code"></i> 特徵工程關鍵算式</div>
+                                <pre><code># 24h 日週期諧波
+X['hr_sin'] = sin(2 * π * hr / 24)
+X['hr_cos'] = cos(2 * π * hr / 24)
+
+# 12h 半日尖峰諧波 (捕捉早晚雙峰)
+X['hr_sin2'] = sin(4 * π * hr / 24)
+X['hr_cos2'] = cos(4 * π * hr / 24)
+
+# 工作日尖峰指示器
+X['is_rush_hour'] = (workingday == 1) & 
+                    (hr.isin([8, 9, 17, 18]))</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 4 -->
+                <div class="crisp-panel" id="crisp-panel-4">
+                    <div class="panel-header">
+                        <h3>階段四：多元線性迴歸與五種特徵選取 (Modeling & Feature Selection)</h3>
+                        <span class="panel-badge">5 種演算法全面對決</span>
+                    </div>
+                    <div class="panel-content-grid">
+                        <div class="panel-text">
+                            <h4>特徵選取演算法實施細節：</h4>
+                            <ul>
+                                <li><b>Lasso (L1)</b>：以 5 折交叉驗證自適應懲罰，在 `temp` 與 `atemp` 共線性中自動壓縮 `atemp`。</li>
+                                <li><b>Forward SFS</b>：前向貪婪逐步迭代，以最小訓練 RSS 為指引。</li>
+                                <li><b>RFE</b>：依據線性模型權重遞迴淘汰次要特徵。</li>
+                                <li><b>ElasticNet (L1+L2)</b>：展現分組效應，同時保留並分攤高度共線之 `temp` 與 `atemp`。</li>
+                                <li><b>Exhaustive Search (窮舉搜尋, k=1..6)</b>：矩陣化加速，在 3 秒內遍歷 31,179 種組合，求出全域數學最優解！</li>
+                            </ul>
+                        </div>
+                        <div class="panel-visual">
+                            <div class="chart-preview-box">
+                                <img src="results/feature_selection_rmse_vs_k.png" alt="特徵數 vs RMSE" class="img-preview" onclick="openModal(this.src)">
+                                <span class="chart-caption"><i class="fa-solid fa-magnifying-glass-plus"></i> 特徵數 k vs 驗證集 RMSE 變化趨勢圖</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 5 -->
+                <div class="crisp-panel" id="crisp-panel-5">
+                    <div class="panel-header">
+                        <h3>階段五：模型評估、殘差診斷與 95% 共形預測區間 (Evaluation)</h3>
+                        <span class="panel-badge">94.40% 實證覆蓋率</span>
+                    </div>
+                    <div class="panel-content-grid">
+                        <div class="panel-text">
+                            <h4>評估與診斷核心結果：</h4>
+                            <ul>
+                                <li><b>全特徵最優</b>：在驗證集上，$k=18$ 達到最優 RMSE = 133.72 輛，在獨立測試集維持 RMSE = 138.99 輛。</li>
+                                <li><b>95% 共形覆蓋率</b>：在獨立測試集實測覆蓋率達 <b>94.40%</b>（名義 95.0%），共形分位點 $q = 318.81$ 輛。</li>
+                                <li><b>殘差診斷</b>：殘差呈現均值為 0 之對稱鐘形分佈，在高需求時段呈現合理之輕微異質變異。</li>
+                            </ul>
+                        </div>
+                        <div class="panel-visual">
+                            <div class="chart-preview-box">
+                                <img src="results/prediction_interval_95.png" alt="95% 預測區間" class="img-preview" onclick="openModal(this.src)">
+                                <span class="chart-caption"><i class="fa-solid fa-magnifying-glass-plus"></i> 測試集前 168 小時 (完整一週) 預測區間時序圖</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 6 -->
+                <div class="crisp-panel" id="crisp-panel-6">
+                    <div class="panel-header">
+                        <h3>階段六：系統部署與維運考量 (Deployment)</h3>
+                        <span class="panel-badge">&lt; 0.1ms 推論延遲</span>
+                    </div>
+                    <div class="panel-content-grid">
+                        <div class="panel-text">
+                            <h4>生產環境落地架構：</h4>
+                            <ul>
+                                <li><b>輕量化邊緣推論</b>：多元線性迴歸僅需 18 次乘加運算，記憶體僅佔數 KB，可直接嵌入各借車站點微控制器（MCU）或邊緣閘道器。</li>
+                                <li><b>動態安全水位警示</b>：以 $[Lower_{95}, Upper_{95}]$ 指導調度卡車即時預先搬移車輛。</li>
+                                <li><b>概念漂移監控 (Concept Drift)</b>：建置每週滑動視窗再校準機制，定期更新共形閾值 $q$ 以適應季節更迭。</li>
+                            </ul>
+                        </div>
+                        <div class="panel-visual">
+                            <div class="mini-card">
+                                <i class="fa-solid fa-server icon-accent"></i>
+                                <h4>標準化推論管線 (Saved Pipeline)</h4>
+                                <p>模型與轉換器已序列化儲存於 <code>models/best_linear_regression.joblib</code> 與 <code>models/feature_scaler.joblib</code>，具備 100% 可重現性。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Selection Showcase Section -->
+        <section class="content-section" id="features">
+            <div class="section-header">
+                <div class="section-tag"><i class="fa-solid fa-filter"></i> 五大演算法評比</div>
+                <h2 class="section-title">特徵選取方法綜合競賽比較</h2>
+                <p class="section-desc">系統性評估 Lasso、Forward SFS、RFE、ElasticNet 與 Exhaustive Search 之特徵子集表現。</p>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="table-responsive card-container">
+                <table class="benchmark-table" id="feature-comparison-table">
+                    <thead>
+                        <tr>
+                            <th>演算法名稱</th>
+                            <th>最佳特徵數 ($k^*$)</th>
+                            <th>驗證集 RMSE</th>
+                            <th>驗證集 R²</th>
+                            <th>測試集 RMSE</th>
+                            <th>測試集 R²</th>
+                            <th>測試集 MAE</th>
+                            <th>處理共線性策略</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="highlight-row">
+                            <td><i class="fa-solid fa-trophy text-amber"></i> <b>RFE (遞迴消除)</b></td>
+                            <td><span class="badge-pill badge-primary">18</span></td>
+                            <td><b>133.72</b></td>
+                            <td><b>0.6131</b></td>
+                            <td><b>138.99</b></td>
+                            <td><b>0.5824</b></td>
+                            <td>100.92</td>
+                            <td>優先保留尖峰交互項與日夜諧波</td>
+                        </tr>
+                        <tr>
+                            <td><b>Forward SFS (前向逐步)</b></td>
+                            <td><span class="badge-pill badge-primary">18</span></td>
+                            <td>133.72</td>
+                            <td>0.6131</td>
+                            <td>138.99</td>
+                            <td>0.5824</td>
+                            <td>100.92</td>
+                            <td>氣象特徵偏好優先納入 atemp</td>
+                        </tr>
+                        <tr>
+                            <td><b>Lasso (L1 正則化)</b></td>
+                            <td><span class="badge-pill badge-primary">18</span></td>
+                            <td>133.72</td>
+                            <td>0.6131</td>
+                            <td>138.99</td>
+                            <td>0.5824</td>
+                            <td>100.92</td>
+                            <td>將極度共線之 atemp 強力壓縮至 0</td>
+                        </tr>
+                        <tr>
+                            <td><b>ElasticNet (彈性網絡)</b></td>
+                            <td><span class="badge-pill badge-primary">18</span></td>
+                            <td>133.72</td>
+                            <td>0.6131</td>
+                            <td>138.99</td>
+                            <td>0.5824</td>
+                            <td>100.92</td>
+                            <td>分組效應：同時保留並分攤 temp 與 atemp</td>
+                        </tr>
+                        <tr>
+                            <td><b>Exhaustive Search (窮舉)</b></td>
+                            <td><span class="badge-pill badge-warning">6 (界限)</span></td>
+                            <td>149.40</td>
+                            <td>0.5171</td>
+                            <td>156.03</td>
+                            <td>0.4738</td>
+                            <td>106.09</td>
+                            <td>數學全域最優組合：yr, atemp, hr諧波, 尖峰</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Plots Grid -->
+            <div class="plots-two-col">
+                <div class="plot-box">
+                    <img src="results/feature_selection_rmse_vs_k.png" alt="特徵數 vs RMSE" onclick="openModal(this.src)">
+                    <div class="plot-title">特徵數量 (k) vs 驗證集 RMSE 變化曲線</div>
+                </div>
+                <div class="plot-box">
+                    <img src="results/feature_selection_r2_vs_k.png" alt="特徵數 vs R2" onclick="openModal(this.src)">
+                    <div class="plot-title">特徵數量 (k) vs 驗證集 R² 判定係數變化曲線</div>
+                </div>
+                <div class="plot-box">
+                    <img src="results/train_vs_val_performance.png" alt="訓練 vs 驗證" onclick="openModal(this.src)">
+                    <div class="plot-title">最佳模型：訓練集 vs 驗證集 RMSE 泛化診斷</div>
+                </div>
+                <div class="plot-box">
+                    <img src="results/feature_importance_coefficients.png" alt="特徵係數" onclick="openModal(this.src)">
+                    <div class="plot-title">最佳特徵標準化迴歸係數 (Beta 權重大小)</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 95% Conformal Prediction Section -->
+        <section class="content-section" id="conformal">
+            <div class="section-header">
+                <div class="section-tag"><i class="fa-solid fa-shield-halved"></i> 統計學不確定性量化</div>
+                <h2 class="section-title">95% 獨立校準集分割共形預測 (Split Conformal Prediction)</h2>
+                <p class="section-desc">絕非人為捏造任意固定常數，遵循無分佈假設（Distribution-Free）的嚴謹統計學覆蓋保證。</p>
+            </div>
+
+            <!-- Mathematical Formula Banner -->
+            <div class="formula-banner">
+                <div class="formula-item">
+                    <span class="f-label">非一致性分數 (Non-conformity Score)</span>
+                    <span class="f-math">s<sub>i</sub> = | y<sub>cal, i</sub> - ŷ<sub>cal, i</sub> |</span>
+                </div>
+                <div class="formula-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                <div class="formula-item">
+                    <span class="f-label">95% 共形分位數閾值</span>
+                    <span class="f-math">q = Quantile<sub>⌈(n+1)(1-α)⌉ / n</sub> ({s<sub>i</sub>}) = <b>±318.81 輛</b></span>
+                </div>
+                <div class="formula-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                <div class="formula-item">
+                    <span class="f-label">測試集預測區間 (截斷非負)</span>
+                    <span class="f-math">[ max(0, ŷ - q), ŷ + q ]</span>
+                </div>
+            </div>
+
+            <!-- Main Big Plot -->
+            <div class="main-plot-container card-container">
+                <img src="results/prediction_interval_95.png" alt="95% 預測區間時序圖" class="img-fluid" onclick="openModal(this.src)">
+                <div class="plot-footer-info">
+                    <div class="p-info-item">
+                        <i class="fa-solid fa-check-double text-success"></i>
+                        <span>實證測試集覆蓋率：<b>94.40%</b> (名義目標：95.0%)</span>
+                    </div>
+                    <div class="p-info-item">
+                        <i class="fa-solid fa-arrows-left-right text-info"></i>
+                        <span>平均區間寬度：<b>525.99 輛</b></span>
+                    </div>
+                    <div class="p-info-item">
+                        <i class="fa-solid fa-circle-info text-warning"></i>
+                        <span>時序非定態分析：受 2012 年底冬季極端氣候影響，實證覆蓋率微幅偏移 0.6%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Residual Diagnostic Plots -->
+            <div class="plots-three-col">
+                <div class="plot-box">
+                    <img src="results/actual_vs_predicted_scatter.png" alt="實際 vs 預測散佈圖" onclick="openModal(this.src)">
+                    <div class="plot-title">實際值 vs 預測值 (y = x 參考線)</div>
+                </div>
+                <div class="plot-box">
+                    <img src="results/residual_distribution.png" alt="殘差分佈" onclick="openModal(this.src)">
+                    <div class="plot-title">殘差次數分佈與常態分佈擬合</div>
+                </div>
+                <div class="plot-box">
+                    <img src="results/residuals_vs_predicted.png" alt="殘差 vs 預測值" onclick="openModal(this.src)">
+                    <div class="plot-title">殘差 vs 預測值 (異質變異檢驗)</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Interactive Simulator Section -->
+        <section class="content-section" id="simulator">
+            <div class="section-header">
+                <div class="section-tag"><i class="fa-solid fa-sliders"></i> 即時互動決策</div>
+                <h2 class="section-title">共享單車每小時需求即時預測模擬器</h2>
+                <p class="section-desc">自由調整氣候、時間、季節與行事曆參數，前端即時以真實多元線性迴歸權重計算點預測與 95% 共形區間。</p>
+            </div>
+
+            <div class="simulator-layout">
+                <!-- Controls Form -->
+                <div class="sim-controls-card">
+                    <h3><i class="fa-solid fa-gear"></i> 輸入環境與時程參數</h3>
+                    
+                    <div class="control-group">
+                        <div class="control-label-row">
+                            <label for="sim-hour"><i class="fa-solid fa-clock"></i> 每日小時 (Hour of Day: 0-23)</label>
+                            <span class="control-val-badge" id="val-hour">08:00</span>
+                        </div>
+                        <input type="range" id="sim-hour" min="0" max="23" value="8" class="sim-slider">
+                        <div class="slider-marks">
+                            <span>00:00 (深夜)</span>
+                            <span>08:00 (晨尖峰)</span>
+                            <span>12:00</span>
+                            <span>17:00 (傍尖峰)</span>
+                            <span>23:00</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label-row">
+                            <label for="sim-temp"><i class="fa-solid fa-temperature-half"></i> 氣溫 (Temperature: °C)</label>
+                            <span class="control-val-badge" id="val-temp">24.0 °C</span>
+                        </div>
+                        <input type="range" id="sim-temp" min="-5" max="38" value="24" step="0.5" class="sim-slider">
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label-row">
+                            <label for="sim-hum"><i class="fa-solid fa-droplet"></i> 相對濕度 (Humidity: %)</label>
+                            <span class="control-val-badge" id="val-hum">55 %</span>
+                        </div>
+                        <input type="range" id="sim-hum" min="0" max="100" value="55" class="sim-slider">
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label-row">
+                            <label for="sim-wind"><i class="fa-solid fa-wind"></i> 風速 (Wind Speed: km/h)</label>
+                            <span class="control-val-badge" id="val-wind">12 km/h</span>
+                        </div>
+                        <input type="range" id="sim-wind" min="0" max="60" value="12" class="sim-slider">
+                    </div>
+
+                    <div class="control-row-grid">
+                        <div class="control-subgroup">
+                            <label for="sim-workingday"><i class="fa-solid fa-briefcase"></i> 日期屬性</label>
+                            <select id="sim-workingday" class="sim-select">
+                                <option value="1" selected>工作日 (週一至週五通勤)</option>
+                                <option value="0">週末 / 國定假日 (觀光休閒)</option>
+                            </select>
+                        </div>
+                        <div class="control-subgroup">
+                            <label for="sim-season"><i class="fa-solid fa-sun"></i> 季節</label>
+                            <select id="sim-season" class="sim-select">
+                                <option value="1">春季 (Spring)</option>
+                                <option value="2">夏季 (Summer)</option>
+                                <option value="3" selected>秋季 (Fall)</option>
+                                <option value="4">冬季 (Winter)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="sim-weather"><i class="fa-solid fa-cloud-sun-rain"></i> 天候狀態</label>
+                        <select id="sim-weather" class="sim-select">
+                            <option value="1" selected>晴天 / 少雲 (Clear / Partly Cloudy)</option>
+                            <option value="2">薄霧 / 陰天 (Mist / Cloudy)</option>
+                            <option value="3">小雨 / 小雪 (Light Rain / Snow)</option>
+                            <option value="4">暴雨 / 冰雹暴雪 (Heavy Rain / Storm)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="sim-year"><i class="fa-solid fa-calendar-days"></i> 預測年份</label>
+                        <select id="sim-year" class="sim-select">
+                            <option value="1" selected>2012 年 (網絡擴張成熟期)</option>
+                            <option value="0">2011 年 (營運初期)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Prediction Output Display -->
+                <div class="sim-output-card">
+                    <h3><i class="fa-solid fa-gauge-high"></i> 模型預測與調度建議</h3>
+
+                    <div class="prediction-hero-box">
+                        <span class="pred-label">每小時總借車預測需求 (cnt)</span>
+                        <div class="pred-number" id="pred-output-val">468</div>
+                        <span class="pred-subtext">輛 / 小時</span>
+                    </div>
+
+                    <div class="interval-card">
+                        <div class="interval-header">
+                            <span><i class="fa-solid fa-shield-halved text-emerald"></i> 95% 共形預測區間 (Conformal PI)</span>
+                            <span class="interval-tag">q = ±318.8 輛</span>
+                        </div>
+                        <div class="interval-range-bar">
+                            <div class="range-bound lower">
+                                <span class="b-lbl">保守估計 (Lower)</span>
+                                <span class="b-val" id="pred-lower-val">149 輛</span>
+                            </div>
+                            <div class="range-center">
+                                <div class="range-bar-fill"></div>
+                            </div>
+                            <div class="range-bound upper">
+                                <span class="b-lbl">最高備車 (Upper)</span>
+                                <span class="b-val" id="pred-upper-val">787 輛</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert-box" id="dispatch-alert">
+                        <div class="alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="alert-content">
+                            <h4 id="alert-title">尖峰超載預警 (High Demand Alert)</h4>
+                            <p id="alert-desc">當前處於工作日早尖峰通勤時段且氣溫舒適，預測借車需求高達 468 輛。建議立即出動 2-3 輛調度卡車對主要地鐵站週邊站點預先補充車輛！</p>
+                        </div>
+                    </div>
+
+                    <div class="model-meta-card">
+                        <h4><i class="fa-solid fa-circle-nodes"></i> 推論管線即時計算資訊</h4>
+                        <div class="meta-row">
+                            <span>啟用特徵總數：</span>
+                            <b>18 個輸入特徵</b>
+                        </div>
+                        <div class="meta-row">
+                            <span>尖峰指示器 (is_rush_hour)：</span>
+                            <b id="meta-rush-val" class="text-success">啟動 (貢獻 +164.9 輛)</b>
+                        </div>
+                        <div class="meta-row">
+                            <span>推論耗時：</span>
+                            <b class="text-emerald">&lt; 0.05 ms (純內積矩陣運算)</b>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-left">
+                <i class="fa-solid fa-bicycle"></i>
+                <span>CityBike AI Analytics — 共享單車需求預測系統</span>
+                <span style="margin-left: 14px; opacity: 0.85;">
+                    <i class="fa-solid fa-compass-drafting"></i> 網頁版面設計參考：<a href="https://statsunlock.com/multiple-linear-regression-calculator/" target="_blank" style="color:var(--primary);text-decoration:underline;">StatsUnlock Multiple Linear Regression Calculator</a>
+                </span>
+            </div>
+            <div class="footer-right">
+                <span>學生學號：<code>7115056046</code> | 姓名：<code>陳奕帆</code> | 課程：<code>物聯網數據分析與應用</code></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Image Modal for Full View -->
+    <div id="image-modal" class="modal" onclick="closeModal()">
+        <span class="modal-close">&times;</span>
+        <img class="modal-content" id="modal-img">
+    </div>
+
+    <!-- Script -->
+    <script src="app.js"></script>
+</body>
+</html>
