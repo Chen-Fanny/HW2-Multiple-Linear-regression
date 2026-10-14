@@ -8,7 +8,8 @@
 - **學生學號**：`7115056046`
 - **學生姓名**：`陳奕帆`
 - **GitHub 專案儲存庫**：[https://github.com/Chen-Fanny/HW2-Multiple-Linear-regression.git](https://github.com/Chen-Fanny/HW2-Multiple-Linear-regression.git)
-- **GitHub Pages 線上互動**：[https://chen-fanny.github.io/HW2-Multiple-Linear-regression/](https://chen-fanny.github.io/HW2-Multiple-Linear-regression/)
+- **GitHub Pages 線上demo**：[https://chen-fanny.github.io/HW2-Multiple-Linear-regression/](https://chen-fanny.github.io/HW2-Multiple-Linear-regression/)
+- **demo**：<img width="2740" height="13824" alt="image" src="https://github.com/user-attachments/assets/92d57832-f4df-4285-a367-e7c4d0da0315" />
 
 ---
 
