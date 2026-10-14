@@ -8,7 +8,7 @@
 - **學生學號**：`7115056046`
 - **學生姓名**：`陳奕帆`
 - **GitHub 專案儲存庫**：[https://github.com/Chen-Fanny/HW2-Multiple-Linear-regression.git](https://github.com/Chen-Fanny/HW2-Multiple-Linear-regression.git)
-- **GitHub Pages 線上互動報告**：[https://chen-fanny.github.io/HW2-Multiple-Linear-regression/](https://chen-fanny.github.io/HW2-Multiple-Linear-regression/)
+- **GitHub Pages 線上互動**：[https://chen-fanny.github.io/HW2-Multiple-Linear-regression/](https://chen-fanny.github.io/HW2-Multiple-Linear-regression/)
 
 ---
 
@@ -182,15 +182,3 @@ python web_server.py
     7. **學術報告與 APA 7 寫作論述**：提供標準 APA 格式之統計推論論述範例。
     8. **即時情境模擬器 (What-If Interactive Calculator)**：自由調整小時、氣溫、濕度、風速、工作日、季節與天氣，毫秒級即時計算點預測值與 95% 共形預測區間 $[ \max(0, \hat{y} - q), \hat{y} + q ]$。
 
----
-
-### 8. 繳交作業檢查清單 (Submission Checklist)
-- [x] `7115056046_hw2.py`：包含完整資料清洗、五種特徵選取、多元線性迴歸、共形預測與圖表輸出程式碼。
-- [x] `requirements.txt`：列出執行所需相依套件。
-- [x] `README.md`：提供完整繁體中文專案說明、重現指引與 StatsUnlock 版面參考致謝。
-- [x] `results/`：包含 12 張評估圖檔與 6 份 CSV 評估與共線性報表。
-- [x] `index.html`、`style.css`、`app.js`：GitHub Pages 互動式成果呈現儀表板與即時預測模擬器。
-- [x] `StudentID_hw2.zip`：整合程式碼、互動網頁、模型與成果圖表之標準格式壓縮檔。
-- [ ] **學生個人完成項目**：
-  - **手寫學術報告 (Handwritten Report)**：依據作業規定親筆手寫完成紙本或掃描報告。
-  - 於報告手寫區塊附上 NotebookLM 摘要 (至少 100 字) 與 GPT 提問歷程。
